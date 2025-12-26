@@ -1,0 +1,27 @@
+# Terraform files
+.terraform/
+.terraform.lock.hcl
+terraform.tfstate
+terraform.tfstate.backup
+*.tfstate
+*.tfstate.*
+.terraform.tfstate.lock.info
+
+# AWS MFA 설정 파일 (민감한 정보 포함)
+aws-mfa-config.sh
+
+# 환경 변수 파일
+.env
+.env.local
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+

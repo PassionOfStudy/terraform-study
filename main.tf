@@ -8,73 +8,91 @@ terraform {
 }
 
 provider "aws" {
-  region = "us-west-2"
+  region = var.aws_region
 }
 
 # VPC 생성
 resource "aws_vpc" "main" {
-  cidr_block           = "10.0.0.0/16"
-  enable_dns_hostnames = true
-  enable_dns_support   = true
+  cidr_block           = var.vpc_cidr
+  enable_dns_hostnames = var.enable_dns_hostnames
+  enable_dns_support   = var.enable_dns_support
 
-  tags = {
-    Name = "terraform-vpc"
-  }
+  tags = merge(
+    {
+      Name = "${var.project_name}-vpc"
+    },
+    var.common_tags
+  )
 }
 
 # Internet Gateway 생성
 resource "aws_internet_gateway" "main" {
   vpc_id = aws_vpc.main.id
 
-  tags = {
-    Name = "terraform-igw"
-  }
+  tags = merge(
+    {
+      Name = "${var.project_name}-igw"
+    },
+    var.common_tags
+  )
 }
 
-# Public Subnet 1 (us-west-2a)
+# Public Subnet 1
 resource "aws_subnet" "public_1" {
   vpc_id                  = aws_vpc.main.id
-  cidr_block              = "10.0.1.0/24"
-  availability_zone       = "us-west-2a"
+  cidr_block              = var.public_subnet_cidrs[0]
+  availability_zone       = var.availability_zones[0]
   map_public_ip_on_launch = true
 
-  tags = {
-    Name = "terraform-public-subnet-1"
-  }
+  tags = merge(
+    {
+      Name = "${var.project_name}-public-subnet-1"
+    },
+    var.common_tags
+  )
 }
 
-# Public Subnet 2 (us-west-2c)
+# Public Subnet 2
 resource "aws_subnet" "public_2" {
   vpc_id                  = aws_vpc.main.id
-  cidr_block              = "10.0.2.0/24"
-  availability_zone       = "us-west-2c"
+  cidr_block              = var.public_subnet_cidrs[1]
+  availability_zone       = var.availability_zones[1]
   map_public_ip_on_launch = true
 
-  tags = {
-    Name = "terraform-public-subnet-2"
-  }
+  tags = merge(
+    {
+      Name = "${var.project_name}-public-subnet-2"
+    },
+    var.common_tags
+  )
 }
 
-# Private Subnet 1 (us-west-2a)
+# Private Subnet 1
 resource "aws_subnet" "private_1" {
   vpc_id            = aws_vpc.main.id
-  cidr_block        = "10.0.10.0/24"
-  availability_zone = "us-west-2a"
+  cidr_block        = var.private_subnet_cidrs[0]
+  availability_zone = var.availability_zones[0]
 
-  tags = {
-    Name = "terraform-private-subnet-1"
-  }
+  tags = merge(
+    {
+      Name = "${var.project_name}-private-subnet-1"
+    },
+    var.common_tags
+  )
 }
 
-# Private Subnet 2 (us-west-2c)
+# Private Subnet 2
 resource "aws_subnet" "private_2" {
   vpc_id            = aws_vpc.main.id
-  cidr_block        = "10.0.20.0/24"
-  availability_zone = "us-west-2c"
+  cidr_block        = var.private_subnet_cidrs[1]
+  availability_zone = var.availability_zones[1]
 
-  tags = {
-    Name = "terraform-private-subnet-2"
-  }
+  tags = merge(
+    {
+      Name = "${var.project_name}-private-subnet-2"
+    },
+    var.common_tags
+  )
 }
 
 # Route Table for Public Subnets
@@ -86,9 +104,12 @@ resource "aws_route_table" "public" {
     gateway_id = aws_internet_gateway.main.id
   }
 
-  tags = {
-    Name = "terraform-public-rt"
-  }
+  tags = merge(
+    {
+      Name = "${var.project_name}-public-rt"
+    },
+    var.common_tags
+  )
 }
 
 # Route Table Association - Public Subnet 1
@@ -105,55 +126,51 @@ resource "aws_route_table_association" "public_2" {
 
 # Security Group
 resource "aws_security_group" "web" {
-  name        = "terraform-web-sg"
+  name        = "${var.project_name}-${var.security_group_name}"
   description = "Security group for web servers"
   vpc_id      = aws_vpc.main.id
 
-  ingress {
-    description = "HTTP"
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+  dynamic "ingress" {
+    for_each = var.security_group_ingress_rules
+    content {
+      description = ingress.value.description
+      from_port   = ingress.value.from_port
+      to_port     = ingress.value.to_port
+      protocol    = ingress.value.protocol
+      cidr_blocks = ingress.value.cidr_blocks
+    }
   }
 
-  ingress {
-    description = "HTTPS"
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+  dynamic "egress" {
+    for_each = var.security_group_egress_rules
+    content {
+      description = egress.value.description
+      from_port   = egress.value.from_port
+      to_port     = egress.value.to_port
+      protocol    = egress.value.protocol
+      cidr_blocks = egress.value.cidr_blocks
+    }
   }
 
-  ingress {
-    description = "SSH"
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  egress {
-    description = "Allow all outbound traffic"
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = {
-    Name = "terraform-web-sg"
-  }
+  tags = merge(
+    {
+      Name = "${var.project_name}-${var.security_group_name}"
+    },
+    var.common_tags
+  )
 }
 
-# EC2 Instance (새로 만든 네트워크 사용)
+# EC2 Instance
 resource "aws_instance" "example" {
-  ami                    = "ami-022bee044edfca8f1"
-  instance_type          = "t2.micro"
+  ami                    = var.ec2_ami
+  instance_type          = var.ec2_instance_type
   subnet_id              = aws_subnet.public_1.id
   vpc_security_group_ids = [aws_security_group.web.id]
 
-  tags = {
-    Name = "terraform-step1"
-  }
+  tags = merge(
+    {
+      Name = "${var.project_name}-${var.ec2_instance_name}"
+    },
+    var.common_tags
+  )
 }

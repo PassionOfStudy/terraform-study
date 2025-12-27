@@ -66,8 +66,13 @@ aws configure
 .
 ├── README.md                  # 프로젝트 메인 문서
 ├── AWS_MFA_README.md         # AWS MFA 인증 가이드
+├── GITHUB_REPO_README.md     # GitHub Repository 생성 가이드
 ├── .gitignore                # Git 제외 파일 목록
-├── main.tf                   # Terraform 메인 설정 파일
+├── main.tf                   # Terraform 메인 리소스 정의
+├── variables.tf              # 변수 정의
+├── terraform.tfvars          # 변수 값 설정
+├── terraform.tfvars.example  # 변수 값 예제 파일
+├── output.tf                 # Output 값 정의
 ├── aws-mfa-auth.sh          # MFA 인증 자동화 스크립트
 └── aws-mfa-config.sh        # MFA 설정 파일 (민감 정보 포함, .gitignore)
 ```
@@ -132,7 +137,21 @@ terraform apply
 terraform apply -auto-approve
 ```
 
-### 4. 상태 확인
+### 4. Output 값 확인
+
+```bash
+# 모든 Output 값 확인
+terraform output
+
+# 특정 Output 값 확인
+terraform output vpc_id
+terraform output ec2_instance_public_ip
+
+# JSON 형식으로 확인
+terraform output -json
+```
+
+### 5. 상태 확인
 
 ```bash
 # 현재 상태 확인
@@ -145,7 +164,7 @@ terraform state list
 terraform state show aws_vpc.main
 ```
 
-### 5. 인프라 삭제
+### 6. 인프라 삭제
 
 ```bash
 terraform destroy
@@ -157,14 +176,52 @@ terraform destroy
 terraform destroy -auto-approve
 ```
 
+## ⚙️ 변수 관리
+
+이 프로젝트는 재사용성과 유지보수성을 위해 모든 설정값을 변수로 관리합니다.
+
+### 변수 파일 구조
+
+- **`variables.tf`**: 모든 변수의 정의와 기본값
+- **`terraform.tfvars`**: 실제 사용할 변수 값 설정
+- **`terraform.tfvars.example`**: 참고용 예제 파일
+
+### 주요 변수
+
+- `aws_region`: AWS 리전 (기본값: `us-west-2`)
+- `project_name`: 프로젝트 이름 (리소스 네이밍에 사용)
+- `vpc_cidr`: VPC CIDR 블록 (기본값: `10.0.0.0/16`)
+- `public_subnet_cidrs`: Public Subnet CIDR 목록
+- `private_subnet_cidrs`: Private Subnet CIDR 목록
+- `availability_zones`: 사용할 Availability Zone 목록
+- `ec2_ami`: EC2 인스턴스 AMI ID
+- `ec2_instance_type`: EC2 인스턴스 타입
+- `security_group_ingress_rules`: Security Group 인바운드 규칙
+- `common_tags`: 모든 리소스에 적용할 공통 태그
+
+### 변수 값 변경
+
+`terraform.tfvars` 파일을 수정하여 환경별로 다른 설정을 적용할 수 있습니다:
+
+```hcl
+# 예: 다른 리전 사용
+aws_region = "ap-northeast-2"
+
+# 예: 다른 프로젝트 이름
+project_name = "my-project"
+
+# 예: 다른 VPC CIDR
+vpc_cidr = "172.16.0.0/16"
+```
+
 ## 🏗️ 구성된 리소스
 
 ### VPC
 
-- **CIDR**: `10.0.0.0/16`
+- **CIDR**: `10.0.0.0/16` (변수로 설정 가능)
 - **DNS 지원**: 활성화
 - **DNS 호스트네임**: 활성화
-- **리전**: `us-west-2` (오레곤)
+- **리전**: `us-west-2` (변수로 설정 가능)
 
 ### Internet Gateway
 
@@ -204,6 +261,19 @@ terraform destroy -auto-approve
 - **Subnet**: Public Subnet 1
 - **Security Group**: Web Security Group
 
+## 📤 Output 값
+
+생성된 리소스의 주요 정보를 Output으로 출력합니다:
+
+- **VPC 정보**: VPC ID, CIDR, ARN
+- **Subnet 정보**: Public/Private Subnet IDs
+- **Internet Gateway**: IGW ID
+- **Route Table**: Public Route Table ID
+- **Security Group**: Security Group ID, ARN
+- **EC2 Instance**: Instance ID, ARN, Public/Private IP, DNS
+
+Output 값은 `terraform output` 명령어로 확인할 수 있으며, 다른 Terraform 모듈이나 스크립트에서 참조할 수 있습니다.
+
 ## 📝 주요 명령어 요약
 
 ```bash
@@ -217,6 +287,10 @@ terraform plan
 terraform apply
 terraform apply -auto-approve
 
+# Output 값 확인
+terraform output
+terraform output vpc_id
+
 # 상태 확인
 terraform show
 terraform state list
@@ -225,7 +299,7 @@ terraform state list
 terraform destroy
 terraform destroy -auto-approve
 
-# 형식 검증
+# 형식 검증 및 포맷팅
 terraform fmt
 terraform validate
 ```
@@ -258,4 +332,19 @@ terraform validate
   - Route Tables
   - Security Groups
   - EC2 Instance
+
+### Step 02 - 코드 리팩토링 (2025-12-27)
+- **변수 분리**: 하드코딩된 값들을 `variables.tf`로 이동
+- **변수 값 관리**: `terraform.tfvars` 파일로 설정값 관리
+- **Output 추가**: `output.tf` 파일로 생성된 리소스 정보 출력
+- **파일 구조 개선**: 
+  - `main.tf`: 리소스 정의만 포함
+  - `variables.tf`: 모든 변수 정의
+  - `terraform.tfvars`: 변수 값 설정
+  - `output.tf`: Output 값 정의
+- **재사용성 향상**: 
+  - 환경별로 다른 설정 적용 가능
+  - `merge()` 함수로 공통 태그 관리
+  - `dynamic` 블록으로 Security Group 규칙 동적 생성
+- **Best Practice 적용**: Terraform 권장 구조 및 패턴 적용
 

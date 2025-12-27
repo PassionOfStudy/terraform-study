@@ -1,0 +1,33 @@
+# AWS Configuration
+aws_region = "us-west-2"
+
+# Project Configuration
+project_name = "terraform"
+
+# VPC Configuration
+vpc_cidr             = "10.0.0.0/16"
+enable_dns_hostnames = true
+enable_dns_support   = true
+
+# Availability Zones
+availability_zones = ["us-west-2a", "us-west-2c"]
+
+# Subnet Configuration
+public_subnet_cidrs  = ["10.0.1.0/24", "10.0.2.0/24"]
+private_subnet_cidrs = ["10.0.10.0/24", "10.0.20.0/24"]
+
+# Security Group Configuration
+security_group_name = "web-sg"
+
+# EC2 Instance Configuration
+ec2_ami           = "ami-022bee044edfca8f1" # Amazon Linux 2 in us-west-2
+ec2_instance_type = "t2.micro"
+ec2_instance_name = "step1"
+
+# Common Tags
+common_tags = {
+  Project     = "Terraform-Study"
+  ManagedBy   = "Terraform"
+  Environment = "dev"
+}
+

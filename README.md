@@ -347,4 +347,3 @@ terraform validate
   - `merge()` 함수로 공통 태그 관리
   - `dynamic` 블록으로 Security Group 규칙 동적 생성
 - **Best Practice 적용**: Terraform 권장 구조 및 패턴 적용
-
